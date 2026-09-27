@@ -4,6 +4,7 @@ spring:
   profiles:
     active: dev
 
+---
 # DEV PROFILE (local testing with H2)
 spring:
   config:
@@ -33,6 +34,7 @@ spring:
 server:
   port: 8080
 
+---
 # PROD PROFILE (Live Server with PostgreSQL)
 spring:
   config:
@@ -40,7 +42,7 @@ spring:
       on-profile: prod 
 
   datasource: 
-     # Read from environment variables set on your production server / Docker
+    # Read from environment variables set on your production server / Docker
     url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:5432/foodrescuedb}
     username: ${SPRING_DATASOURCE_USERNAME:postgres}
     password: ${SPRING_DATASOURCE_PASSWORD:postgres}
@@ -54,8 +56,3 @@ spring:
 
 server:
   port: ${PORT:8080}
-
-    
-
-
-
