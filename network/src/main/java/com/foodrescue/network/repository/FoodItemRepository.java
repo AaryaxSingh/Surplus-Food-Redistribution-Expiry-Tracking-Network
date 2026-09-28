@@ -19,7 +19,7 @@ public interface FoodItemRepository extends JpaRepository<FoodItem, Long> {
     // donated
     @Query("""
             SELECT f FROM FoodItem f
-            WHERE f.status IN ('ACTIVE_SALE', 'DISCOUNTED_TIER1', 'DISCOUNTED_TIER2', 'DONATION_CRITICAL')
+            WHERE f.status IN ('ACTIVE_SALE', 'DISCOUNTED_TIER_1', 'DISCOUNTED_TIER_2', 'DONATION_CRITICAL')
             """)
     List<FoodItem> findAllActiveForDecayEvaluation();
 }
