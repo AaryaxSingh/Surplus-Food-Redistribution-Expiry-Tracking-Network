@@ -30,7 +30,7 @@ public class ClaimService {
     private final PickupClaimRepository pickupClaimRepository;
 
     @Transactional
-    public ClaimResponseDTO createDonation(ClaimRequestDTO req) {
+    public ClaimResponseDTO claimDonation(ClaimRequestDTO req) {
         FoodItem item = foodItemRepository.findById(req.getFoodItemId())
                 .orElseThrow(() -> new IllegalArgumentException("Food item not found with ID: " + req.getFoodItemId()));
 

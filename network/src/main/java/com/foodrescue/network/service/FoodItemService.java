@@ -49,6 +49,13 @@ public class FoodItemService {
         return foodItemRepository.findAllActiveForDecayEvaluation().stream().map(this::mapToDTO).toList();
     }
 
+    @Transactional(readOnly = true)
+    public List<FoodItemResponseDTO> getDonationCriticalItems() {
+        return foodItemRepository.findByStatus(ListingStatus.DONATION_CRITICAL).stream()
+                .map(this::mapToDTO)
+                .toList();
+    }
+
     public FoodItemResponseDTO mapToDTO(FoodItem item) {
         return FoodItemResponseDTO.builder()
                 .id(item.getId())
