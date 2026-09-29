@@ -1,0 +1,401 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>FoodRescueNet</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Figtree:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/sockjs-client/1.6.1/sockjs.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/stomp.js/2.3.3/stomp.min.js"></script>
+<style>
+:root{--g9:#0f3d26;--g7:#1e7a46;--g5:#2fa35f;--g1:#e6f5ec;--o6:#e8590c;--o5:#f97316;--o1:#fff0e3;--bg:#f5f7f6;--card:#fff;--tx:#17211b;--mu:#65726a;--ln:#dfe6e2;--r:14px}
+*{box-sizing:border-box;margin:0}
+body{font-family:Figtree,system-ui,sans-serif;background:var(--bg);color:var(--tx);line-height:1.5}
+button,input,select{font:inherit}
+:focus-visible{outline:3px solid var(--o5);outline-offset:2px}
+nav{position:sticky;top:0;z-index:20;background:var(--g9);color:#fff;display:flex;align-items:center;gap:6px;padding:10px 20px;flex-wrap:wrap}
+nav .logo{font-weight:800;font-size:1.15rem;margin-right:auto;color:#fff;text-decoration:none}
+nav a.l{color:#cfe6d8;text-decoration:none;padding:8px 14px;border-radius:99px;font-weight:600;font-size:.92rem}
+nav a.l.on,nav a.l:hover{background:var(--g7);color:#fff}
+main{max-width:1100px;margin:0 auto;padding:24px 20px 60px}
+h1{font-size:clamp(2rem,5vw,3.4rem);line-height:1.05;letter-spacing:-.02em;font-weight:800}
+h2{font-size:1.5rem;font-weight:800;letter-spacing:-.01em}
+.mu{color:var(--mu)}
+.btn{border:0;border-radius:10px;padding:11px 20px;font-weight:700;cursor:pointer;background:var(--g7);color:#fff}
+.btn:hover{background:var(--g9)}
+.btn.o{background:var(--o6)}.btn.o:hover{background:#c2410c}
+.btn.ghost{background:transparent;color:var(--g7);border:2px solid var(--g7)}
+.btn:disabled{opacity:.5;cursor:not-allowed}
+.card{background:var(--card);border:1px solid var(--ln);border-radius:var(--r);padding:18px}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:16px}
+.row{display:flex;gap:12px;align-items:center;justify-content:space-between;flex-wrap:wrap}
+.hero{display:grid;grid-template-columns:1fr 1fr;gap:36px;align-items:start;padding:24px 0}
+.hero .pitch{margin:16px 0 22px;font-size:1.1rem;max-width:46ch}
+.decay{display:flex;flex-direction:column;gap:8px;margin-top:8px}
+.decay div{display:flex;justify-content:space-between;padding:10px 14px;border-radius:10px;font-weight:700}
+.d1{background:var(--g1);color:var(--g9)}.d2{background:#fff3d6;color:#8a5a00}.d3{background:var(--o1);color:var(--o6)}.d4{background:var(--o6);color:#fff}
+label{display:block;font-weight:600;font-size:.88rem;margin:12px 0 4px}
+input,select{width:100%;padding:10px 12px;border:1.5px solid var(--ln);border-radius:10px;background:#fff}
+.roles{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px}
+.roles input{position:absolute;opacity:0;width:0}
+.roles label{margin:0;border:2px solid var(--ln);border-radius:12px;padding:12px;text-align:center;cursor:pointer}
+.roles input:checked+label{border-color:var(--g7);background:var(--g1);color:var(--g9)}
+.roles input:focus-visible+label{outline:3px solid var(--o5)}
+.pill{display:inline-block;padding:3px 10px;border-radius:99px;font-size:.78rem;font-weight:700;background:var(--g1);color:var(--g9)}
+.pill.warn{background:var(--o1);color:var(--o6)}.pill.free{background:var(--o6);color:#fff}.pill.off{background:#eee;color:#555}
+.bar{height:10px;border-radius:9px;background:var(--g1);overflow:hidden;margin:10px 0 6px}
+.bar i{display:block;height:100%;border-radius:9px;background:var(--g5);transition:width 1s linear}
+.bar.warn i{background:var(--o5)}.bar.free i{background:var(--o6)}
+.price{font-size:1.4rem;font-weight:800}.price s{font-size:.9rem;color:var(--mu);font-weight:500;margin-left:6px}
+.time{font-variant-numeric:tabular-nums;font-weight:700}
+.modal{position:fixed;inset:0;background:#0009;display:none;place-items:center;z-index:50;padding:16px}
+.modal.open{display:grid}
+.modal .card{width:min(460px,100%);max-height:92vh;overflow:auto}
+#toasts{position:fixed;top:70px;right:16px;z-index:60;display:flex;flex-direction:column;gap:10px;width:min(360px,calc(100vw - 32px))}
+.toast{background:var(--o6);color:#fff;border-radius:12px;padding:14px 16px;box-shadow:0 8px 24px #0004;animation:pop .35s cubic-bezier(.2,1.4,.4,1)}
+.toast.ok{background:var(--g7)}.toast.err{background:#b42318}
+.toast b{display:block}
+@keyframes pop{from{transform:translateX(60px);opacity:0}}
+.feed{max-height:230px;overflow:auto;display:flex;flex-direction:column;gap:8px;margin-top:10px}
+.feed div{padding:10px 12px;border-left:4px solid var(--o5);background:var(--o1);border-radius:8px;font-size:.92rem}
+.dot{display:inline-block;width:9px;height:9px;border-radius:50%;background:#aaa;margin-right:6px}
+.dot.on{background:var(--g5);box-shadow:0 0 0 4px #2fa35f33}
+.stats{display:grid;grid-template-columns:2fr 1fr 1fr;gap:16px;margin:20px 0}
+.big{font-size:clamp(2.6rem,7vw,4.6rem);font-weight:800;line-height:1;letter-spacing:-.03em}
+.stat.main{background:var(--g9);color:#fff;border:0}.stat.main .mu{color:#a9d3bb}
+.stat .big.sm{font-size:2.4rem}
+.cat{display:grid;grid-template-columns:90px 1fr 60px;gap:10px;align-items:center;margin:10px 0;font-size:.92rem}
+.cat .bar{margin:0}
+.empty{text-align:center;padding:36px;color:var(--mu);border:2px dashed var(--ln);border-radius:var(--r)}
+.banner{background:#fff3d6;color:#7a5200;padding:8px 20px;font-size:.85rem;text-align:center}
+@media(max-width:760px){.hero,.stats{grid-template-columns:1fr}}
+@media(prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+</style>
+</head>
+<body>
+<div id="banner" class="banner" hidden>Demo mode: backend not reachable, showing sample data. Claims and new listings stay in this browser tab only.</div>
+<nav id="nav"></nav>
+<div id="toasts" aria-live="assertive"></div>
+<main id="app"></main>
+
+<div class="modal" id="modal" role="dialog" aria-modal="true" aria-labelledby="mt">
+  <div class="card">
+    <div class="row"><h2 id="mt">Add surplus food</h2><button class="btn ghost" onclick="closeModal()">Close</button></div>
+    <form id="foodForm">
+      <label for="fn">Food name</label><input id="fn" required placeholder="Sourdough loaves">
+      <label for="fc">Category</label>
+      <select id="fc"><option>BAKERY</option><option>DAIRY</option><option>MEAT</option><option>PRODUCE</option><option>PREPARED_MEALS</option><option>CANNED_PACKAGED</option></select>
+      <label for="fq">Quantity (kg)</label><input id="fq" type="number" min="0.1" step="0.1" required>
+      <label for="fp">Original price (₹ total)</label><input id="fp" type="number" min="0" step="0.01" required>
+      <label for="fe">Expires at</label><input id="fe" type="datetime-local" required>
+      <p style="margin-top:18px"><button class="btn o" style="width:100%" type="submit">Add surplus food</button></p>
+    </form>
+  </div>
+</div>
+
+<script>
+/* ---------- CONFIG: edit to match your backend ---------- */
+const CFG = {
+  API: '',
+  WS: '/ws-rescue',
+  TOPIC: '/topic/shelter-alerts',
+  PATHS: { register:'/api/users/register', login:'/api/users/login', users:'/api/users', foods:'/api/food-items', donations:'/api/food-items/donations', claims:'/api/claims', impact:'/api/impact/summary' },
+  FREE_HOURS: 6,
+  MEAL_KG: 0.5
+};
+let DEMO = false;
+const $ = s => document.querySelector(s);
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const state = { user: JSON.parse(localStorage.getItem('frn_user') || 'null'), foods: [], donations: [], feed: [], timer: null, stomp: null };
+
+/* ---------- API layer with demo fallback ---------- */
+const hrs = h => new Date(Date.now() + h * 36e5).toISOString();
+const demoDB = {
+  foods: [
+    { id:1, name:'Sourdough loaves', category:'BAKERY', quantityKg:12, originalPrice:900, expirationTime:hrs(40), status:'AVAILABLE' },
+    { id:2, name:'Paneer blocks', category:'DAIRY', quantityKg:8, originalPrice:2400, expirationTime:hrs(14), status:'AVAILABLE' },
+    { id:3, name:'Veg biryani trays', category:'PREPARED_MEALS', quantityKg:20, originalPrice:3000, expirationTime:hrs(5), status:'DONATION_CRITICAL' }
+  ],
+  users: [ { name: 'Demo Vendor', email: 'vendor@demo.com', role: 'ROLE_VENDOR' } ]
+};
+async function api(path, opt = {}) {
+  if (!DEMO) {
+    try {
+      const r = await fetch(CFG.API + path, { headers:{'Content-Type':'application/json'}, ...opt });
+      const body = await r.json().catch(() => ({}));
+      if (!r.ok) { const e = new Error(body.message || r.statusText); e.status = r.status; throw e; }
+      return body;
+    } catch (e) { if (e.status) throw e; DEMO = true; $('#banner').hidden = false; }
+  }
+  return demo(path, opt);
+}
+function demo(path, opt) {
+  const m = opt.method || 'GET', P = CFG.PATHS;
+  if (path === P.register) return { id:99, ...JSON.parse(opt.body) };
+  if (path === P.login) { const e = JSON.parse(opt.body).email; const u = demoDB.users.find(x=>x.email===e); if(u) return {id:99,...u}; throw new Error('User not found'); }
+  if (path === P.donations) return demoDB.foods.filter(f => f.status === 'DONATION_CRITICAL');
+  if (path === P.foods && m === 'GET') return demoDB.foods;
+  if (path === P.foods) { const b = JSON.parse(opt.body); const f = { id:Date.now(), status:'AVAILABLE', ...b }; demoDB.foods.push(f); return f; }
+  if (path.startsWith(P.users)) return demoDB.users;
+  if (path === P.claims) {
+    const id = JSON.parse(opt.body).foodItemId, f = demoDB.foods.find(x => x.id === id);
+    if (!f || f.status === 'CLAIMED' || id === 4 && Math.random() < .5) { if (f) f.status = 'CLAIMED'; const e = new Error('Conflict'); e.status = 409; throw e; }
+    f.status = 'CLAIMED'; return { ok:true };
+  }
+  if (path === P.impact) { const kg = 1240 + demoDB.foods.filter(f => f.status === 'CLAIMED').reduce((a, f) => a + f.quantityKg, 0);
+    return { totalKgSalvaged:kg, mealsProvided:kg / CFG.MEAL_KG, co2OffsetKg:kg * 2.5, byCategory:{ Bakery:410, Produce:380, 'Prepared meals':260, Dairy:190 } }; }
+}
+
+/* ---------- helpers ---------- */
+const fmt = n => Math.round(n).toLocaleString('en-IN');
+const money = n => '₹' + fmt(n);
+const kg = f => f.quantityKg ?? f.quantity ?? 0;
+function timeInfo(exp) {
+  const ms = new Date(exp) - Date.now(), h = ms / 36e5;
+  const s = Math.max(0, Math.floor(ms / 1000));
+  const txt = ms <= 0 ? 'Expired' : `${String(Math.floor(s / 3600)).padStart(2,'0')}:${String(Math.floor(s % 3600 / 60)).padStart(2,'0')}:${String(s % 60).padStart(2,'0')}`;
+  const level = h <= CFG.FREE_HOURS ? 'free' : h <= 24 ? 'warn' : 'ok';
+  const discount = level === 'free' ? 100 : h <= 12 ? 60 : h <= 24 ? 30 : 0;
+  const pct = Math.max(4, Math.min(100, (h - CFG.FREE_HOURS) / (48 - CFG.FREE_HOURS) * 100));
+  return { txt, level, discount, pct: level === 'free' ? 100 : 100 - pct + 4 };
+}
+function toast(title, msg, cls = '') {
+  const t = document.createElement('div'); t.className = 'toast ' + cls;
+  t.innerHTML = `<b>${esc(title)}</b>${esc(msg)}`; $('#toasts').prepend(t); setTimeout(() => t.remove(), 7000);
+}
+function openModal() { $('#modal').classList.add('open'); $('#fn').focus(); }
+function closeModal() { $('#modal').classList.remove('open'); }
+addEventListener('keydown', e => e.key === 'Escape' && closeModal());
+
+/* ---------- nav & router ---------- */
+function renderNav() {
+  const r = location.hash.slice(1) || 'home', u = state.user;
+  const link = (h, t) => `<a class="l ${r === h ? 'on' : ''}" href="#${h}">${t}</a>`;
+  const menu = u ? (u.role === 'VENDOR' ? link('vendor', 'Donation hub') : u.role === 'SHELTER' ? link('shelter', 'Rescue radar') : link('admin', 'Admin Dashboard')) : '';
+  $('#nav').innerHTML = `<a class="logo" href="#home">🌱 FoodRescueNet</a>` +
+    (u ? menu + link('impact', 'Impact') + `<a class="l" href="#" onclick="logout();return false">Sign out (${esc(u.name)})</a>` 
+       : `<a class="btn o" href="#auth" style="text-decoration:none;font-size:0.9rem;padding:8px 16px;border-radius:99px">Login / Register</a>`);
+}
+function logout() { localStorage.removeItem('frn_user'); state.user = null; state.stomp?.disconnect?.(); location.hash = 'home'; route(); }
+async function route() {
+  clearInterval(state.timer); if (state.stomp && (location.hash !== '#shelter')) { try { state.stomp.disconnect(); } catch {} state.stomp = null; }
+  const r = location.hash.slice(1) || 'home';
+  renderNav();
+  if (r !== 'home' && r !== 'auth' && r !== 'impact' && !state.user) { location.hash = 'home'; return; }
+  ({ home:viewHome, auth:viewAuth, vendor:viewVendor, shelter:viewShelter, admin:viewAdmin, impact:viewImpact }[r] || viewHome)();
+}
+addEventListener('hashchange', route);
+
+/* ---------- Screen 1: Home Landing Page ---------- */
+function viewHome() {
+  $('#app').innerHTML = `
+  <section style="text-align:center;padding:60px 0 40px;max-width:850px;margin:0 auto">
+    <h1 style="font-size:clamp(2.5rem,6vw,4.5rem);margin-bottom:20px;color:var(--g9)">Good food shouldn't reach the bin.</h1>
+    <p style="font-size:1.25rem;color:var(--mu);margin-bottom:40px;line-height:1.6">
+      FoodRescueNet is a real-time marketplace connecting commercial kitchens, bakeries, and grocery stores with local shelters. 
+      We automatically track food expiry, dynamically discount prices, and instantly alert charities the moment food becomes free.
+    </p>
+    <div style="display:flex;gap:20px;justify-content:center;margin-bottom:60px">
+      <a href="#auth" class="btn o" style="font-size:1.1rem;text-decoration:none;padding:14px 28px">Get Started</a>
+      <a href="#impact" class="btn ghost" style="font-size:1.1rem;text-decoration:none;padding:14px 28px">View Our Impact</a>
+    </div>
+  </section>
+
+  <section class="grid" style="grid-template-columns:repeat(auto-fit, minmax(300px, 1fr));gap:24px;margin-bottom:60px">
+    <div class="card" style="text-align:center;padding:36px 24px">
+      <div style="font-size:3.5rem;margin-bottom:16px">🏪</div>
+      <h3 style="font-size:1.3rem;margin-bottom:12px">For Vendors</h3>
+      <p class="mu">List surplus food in seconds. Watch our automated system discount prices as the clock ticks down, maximizing recovery before expiry.</p>
+    </div>
+    <div class="card" style="text-align:center;padding:36px 24px">
+      <div style="font-size:3.5rem;margin-bottom:16px">🤝</div>
+      <h3 style="font-size:1.3rem;margin-bottom:12px">For Shelters</h3>
+      <p class="mu">Listen to our live rescue radar. The exact second food reaches the free donation threshold, you get a live WebSocket alert to claim it.</p>
+    </div>
+    <div class="card" style="text-align:center;padding:36px 24px">
+      <div style="font-size:3.5rem;margin-bottom:16px">🌍</div>
+      <h3 style="font-size:1.3rem;margin-bottom:12px">For the Planet</h3>
+      <p class="mu">Track every metric ton of food salvaged. Watch your CO₂ offset and meals provided grow on the live environmental impact dashboard.</p>
+    </div>
+  </section>`;
+}
+
+/* ---------- Screen 1b: Auth (Login/Register) ---------- */
+function viewAuth() {
+  $('#app').innerHTML = `
+  <div class="hero">
+    <form class="card" id="loginForm" style="padding:32px">
+      <h2 style="margin-bottom:8px">Welcome Back</h2>
+      <p class="mu" style="margin-bottom:24px">Login to your account.</p>
+      <label for="le">Email Address</label><input id="le" type="email" required autocomplete="email">
+      <p style="margin-top:24px"><button class="btn" style="width:100%;font-size:1.05rem">Login</button></p>
+    </form>
+
+    <form class="card" id="regForm" style="padding:32px;border-color:var(--o5)">
+      <h2 style="margin-bottom:8px">Create your account</h2>
+      <p class="mu" style="margin-bottom:24px">Join the food rescue network.</p>
+      <label for="rn">Organisation Name</label><input id="rn" required autocomplete="organization">
+      <label for="re">Email Address</label><input id="re" type="email" required autocomplete="email">
+      <label>I am a...</label>
+      <div class="roles">
+        <span><input type="radio" name="role" id="rv" value="ROLE_VENDOR" checked><label for="rv">Vendor</label></span>
+        <span><input type="radio" name="role" id="rs" value="ROLE_SHELTER"><label for="rs">Shelter</label></span>
+        <span><input type="radio" name="role" id="ra" value="ROLE_ADMIN"><label for="ra">Admin</label></span>
+      </div>
+      <p style="margin-top:24px"><button class="btn o" style="width:100%;font-size:1.05rem">Create account</button></p>
+    </form>
+  </div>`;
+
+  $('#loginForm').onsubmit = async e => {
+    e.preventDefault();
+    try {
+      const res = await api(CFG.PATHS.login, { method:'POST', body:JSON.stringify({ email:$('#le').value }) });
+      state.user = { id:res.id, name:res.name, role: res.role.replace('ROLE_', '') };
+      localStorage.setItem('frn_user', JSON.stringify(state.user));
+      toast('Welcome back', 'Logged in successfully.', 'ok');
+      location.hash = state.user.role === 'VENDOR' ? 'vendor' : state.user.role === 'ADMIN' ? 'admin' : 'shelter';
+    } catch (err) { toast('Login failed', err.message, 'err'); }
+  };
+
+  $('#regForm').onsubmit = async e => {
+    e.preventDefault();
+    const role = document.querySelector('[name=role]:checked').value;
+    const body = { name:$('#rn').value, email:$('#re').value, role };
+    try {
+      const res = await api(CFG.PATHS.register, { method:'POST', body:JSON.stringify(body) });
+      state.user = { id:res.id, name:body.name, role: role.replace('ROLE_', '') };
+      localStorage.setItem('frn_user', JSON.stringify(state.user));
+      toast('Welcome aboard', 'Your account is ready.', 'ok');
+      location.hash = state.user.role === 'VENDOR' ? 'vendor' : state.user.role === 'ADMIN' ? 'admin' : 'shelter';
+    } catch (err) { toast('Could not register', err.message, 'err'); }
+  };
+}
+
+/* ---------- Screen 2: vendor hub ---------- */
+async function viewVendor() {
+  $('#app').innerHTML = `<div class="row"><div><h2>Donation hub</h2><p class="mu">Your listings and how close each is to going free.</p></div>
+    <button class="btn o" onclick="openModal()">+ Add surplus food</button></div><div class="grid" id="list" style="margin-top:20px"></div>`;
+  try { state.foods = await api(CFG.PATHS.foods); } catch (e) { toast('Could not load listings', e.message, 'err'); state.foods = []; }
+  const draw = () => {
+    const items = state.foods.filter(f => f.status !== 'CLAIMED');
+    $('#list').innerHTML = items.length ? items.map(f => {
+      const t = timeInfo(f.expirationTime), op = f.originalPrice, cur = op * (100 - t.discount) / 100;
+      return `<article class="card"><div class="row"><b>${esc(f.name)}</b><span class="pill ${t.level === 'free' ? 'free' : t.level === 'warn' ? 'warn' : ''}">${t.level === 'free' ? 'Free donation' : t.discount ? t.discount + '% off' : 'Full price'}</span></div>
+        <p class="mu">${esc(f.category)} · ${kg(f)} kg</p>
+        <div class="price">${cur ? money(cur) : 'Free'}${t.discount ? `<s>${money(op)}</s>` : ''}</div>
+        <div class="bar ${t.level}"><i style="width:${t.pct}%"></i></div>
+        <div class="row"><small class="mu">${t.level === 'free' ? 'Shelters notified' : 'Until free'}</small><span class="time">${t.txt}</span></div></article>`;
+    }).join('') : `<div class="empty" style="grid-column:1/-1">No active listings. Add your first surplus item and shelters nearby will see it.</div>`;
+  };
+  draw(); state.timer = setInterval(draw, 1000);
+  $('#foodForm').onsubmit = async e => {
+    e.preventDefault();
+    const body = { vendorId: state.user.id, name:$('#fn').value, category:$('#fc').value, quantityKg:+$('#fq').value, quantity:+$('#fq').value, originalPrice:+$('#fp').value, expirationTime:new Date($('#fe').value).toISOString() };
+    try { const f = await api(CFG.PATHS.foods, { method:'POST', body:JSON.stringify(body) }); state.foods.push({ status:'AVAILABLE', ...body, ...f });
+      closeModal(); e.target.reset(); toast('Listing added', body.name + ' is now live.', 'ok'); draw(); }
+    catch (err) { toast('Could not add listing', err.message, 'err'); }
+  };
+}
+
+/* ---------- Screen 3: shelter radar ---------- */
+async function viewShelter() {
+  $('#app').innerHTML = `<div class="row"><div><h2>Rescue radar</h2><p class="mu">Free food appears here the second it goes free.</p></div>
+    <span class="pill off" id="conn"><span class="dot"></span>Connecting</span></div>
+    <div class="card" style="margin:18px 0"><b>Live alerts</b><div class="feed" id="feed"><div class="mu" style="background:none;border-color:var(--ln)">Waiting for new free listings.</div></div></div>
+    <h2 style="margin-bottom:12px">Available donations</h2><div class="grid" id="dgrid"></div>`;
+  await loadDonations();
+  connectWS();
+}
+async function loadDonations() {
+  try { state.donations = await api(CFG.PATHS.donations); } catch (e) { toast('Could not load donations', e.message, 'err'); state.donations = []; }
+  drawDonations();
+}
+function drawDonations() {
+  const g = $('#dgrid'); if (!g) return;
+  g.innerHTML = state.donations.length ? state.donations.map(f => {
+    const t = timeInfo(f.expirationTime);
+    return `<article class="card" style="border-color:var(--o5)"><div class="row"><b>${esc(f.name)}</b><span class="pill free">Free</span></div>
+      <p class="mu">${esc(f.category)} · ${kg(f)} kg · about ${fmt(kg(f) / CFG.MEAL_KG)} meals</p>
+      <p style="margin:8px 0">Expires in <span class="time">${t.txt}</span></p>
+      <button class="btn o" style="width:100%;font-size:1.05rem" onclick="claim(${f.id}, this)">Claim this food</button></article>`;
+  }).join('') : `<div class="empty" style="grid-column:1/-1">Nothing free right now. New alerts pop up here automatically, so keep this tab open.</div>`;
+}
+async function claim(id, btn) {
+  btn.disabled = true; btn.textContent = 'Claiming…';
+  try {
+    await api(CFG.PATHS.claims, { method:'POST', body:JSON.stringify({ foodItemId:id, shelterId:state.user.id }) });
+    toast('Claimed', 'Pickup is yours. Head over before it expires.', 'ok');
+  } catch (e) {
+    if (e.status === 409) toast('Too slow this time', 'Another shelter just grabbed this. Watch the feed for the next one.', 'err');
+    else toast('Could not claim', e.message, 'err');
+  }
+  state.donations = state.donations.filter(f => f.id !== id); drawDonations();
+}
+function onAlert(m) {
+  const f = typeof m === 'string' ? JSON.parse(m) : m;
+  toast('🔔 Free food available', `${f.name || 'New item'}${kg(f) ? ' · ' + kg(f) + ' kg' : ''}`);
+  const feed = $('#feed'); if (feed) { if (!state.feed.length) feed.innerHTML = ''; state.feed.unshift(f);
+    feed.insertAdjacentHTML('afterbegin', `<div><b>${esc(f.name || 'New item')}</b> is now free · ${new Date().toLocaleTimeString()}</div>`); }
+  if (f.id && !state.donations.some(d => d.id === f.id) && f.expirationTime) state.donations.unshift(f); else loadDonations();
+  drawDonations();
+}
+function setConn(on, txt) { const c = $('#conn'); if (c) { c.className = 'pill ' + (on ? '' : 'off'); c.innerHTML = `<span class="dot ${on ? 'on' : ''}"></span>${txt}`; } }
+function connectWS() {
+  if (DEMO || typeof SockJS === 'undefined') { setConn(true, 'Demo feed'); state.timer = setTimeout(() => {
+    const f = { id:2, name:'Paneer blocks', category:'Dairy', quantityKg:8, expirationTime:hrs(5.9) }; demoDB.foods[1].status = 'DONATION_CRITICAL'; demoDB.foods[1].expirationTime = f.expirationTime; onAlert(f); }, 6000); return; }
+  const c = Stomp.over(new SockJS(CFG.API + CFG.WS)); c.debug = null; state.stomp = c;
+  c.connect({}, () => { setConn(true, 'Live'); c.subscribe(CFG.TOPIC, msg => onAlert(msg.body)); },
+    () => { setConn(false, 'Disconnected, retrying'); setTimeout(() => location.hash === '#shelter' && connectWS(), 4000); });
+}
+
+/* ---------- Screen 4: impact ---------- */
+async function viewImpact() {
+  let s; try { s = await api(CFG.PATHS.impact); } catch (e) { toast('Could not load impact', e.message, 'err'); s = {}; }
+  const kgT = s.totalKgSalvaged ?? s.totalKg ?? 0, meals = s.mealsProvided ?? kgT / CFG.MEAL_KG, co2 = s.co2OffsetKg ?? s.carbonOffsetKg ?? 0, cats = s.byCategory || {};
+  const max = Math.max(1, ...Object.values(cats));
+  $('#app').innerHTML = `<h2>Our impact</h2><p class="mu">Every kilogram here is a plate filled and waste avoided.</p>
+   <div class="stats">
+     <div class="card stat main"><p class="mu">Food salvaged</p><div class="big"><span data-n="${kgT / 1000}" data-d="2">0</span> t</div><p class="mu" style="margin-top:8px">metric tons kept out of landfill</p></div>
+     <div class="card stat"><p class="mu">Meals provided</p><div class="big sm" data-n="${meals}">0</div><p class="mu">at 0.5 kg a meal</p></div>
+     <div class="card stat"><p class="mu">CO₂e offset</p><div class="big sm"><span data-n="${co2 / 1000}" data-d="1">0</span> t</div><p class="mu">emissions avoided</p></div>
+   </div>
+   ${Object.keys(cats).length ? `<div class="card"><h2 style="font-size:1.1rem">Rescued by category (kg)</h2>${Object.entries(cats).map(([k, v]) =>
+     `<div class="cat"><span>${esc(k)}</span><div class="bar"><i style="width:${v / max * 100}%"></i></div><b>${fmt(v)}</b></div>`).join('')}</div>` : ''}`;
+  document.querySelectorAll('[data-n]').forEach(el => {
+    const end = +el.dataset.n, d = +(el.dataset.d || 0), t0 = performance.now();
+    const step = t => { const p = Math.min(1, (t - t0) / 1400), v = end * (1 - Math.pow(1 - p, 3));
+      el.textContent = d ? v.toFixed(d) : fmt(v); if (p < 1) requestAnimationFrame(step); };
+    requestAnimationFrame(step);
+  });
+}
+
+/* ---------- Screen 5: Admin ---------- */
+async function viewAdmin() {
+  $('#app').innerHTML = `<h2>Admin Dashboard</h2><p class="mu" style="margin-bottom:20px">System overview of all participants and critical items.</p>
+    <div class="grid">
+      <div class="card"><h3>Vendors</h3><div id="adm_v" style="margin-top:10px;display:flex;flex-direction:column;gap:8px"><div class="mu">Loading...</div></div></div>
+      <div class="card"><h3>Shelters</h3><div id="adm_s" style="margin-top:10px;display:flex;flex-direction:column;gap:8px"><div class="mu">Loading...</div></div></div>
+      <div class="card"><h3 style="color:var(--o6)">Critical Items (Live)</h3><div id="adm_c" style="margin-top:10px;display:flex;flex-direction:column;gap:8px"><div class="mu">Loading...</div></div></div>
+    </div>`;
+  try {
+    const [vendors, shelters, critical] = await Promise.all([
+      api(CFG.PATHS.users + '?role=ROLE_VENDOR'),
+      api(CFG.PATHS.users + '?role=ROLE_SHELTER'),
+      api(CFG.PATHS.donations)
+    ]);
+    const r = (list, fn) => list.length ? list.map(fn).join('') : '<div class="mu" style="padding:10px;border:1px dashed var(--ln);border-radius:8px">None found.</div>';
+    const userHTML = u => `<div style="padding:10px;background:var(--bg);border-radius:8px;border:1px solid var(--ln);word-break:break-word"><b>${esc(u.name)}</b><br><small class="mu">${esc(u.email)}</small></div>`;
+    const itemHTML = f => `<div style="padding:10px;background:var(--o1);border-radius:8px;border:1px solid var(--o5)"><b>${esc(f.name)}</b><br><small class="mu">${esc(f.category)} · ${kg(f)}kg</small></div>`;
+    $('#adm_v').innerHTML = r(vendors, userHTML);
+    $('#adm_s').innerHTML = r(shelters, userHTML);
+    $('#adm_c').innerHTML = r(critical, itemHTML);
+  } catch (e) {
+    toast('Error loading admin data', e.message, 'err');
+  }
+}
+
+route();
+</script>
+</body>
+</html>
