@@ -19,6 +19,10 @@ public class UserService {
     private final PasswordEncoder passwordEncoder;
 
     public User registerUser(UserRegistrationDTO dto) {
+        if (dto.getRole() == UserRole.ROLE_ADMIN) {
+            throw new IllegalArgumentException("Public registration of Admin accounts is forbidden.");
+        }
+
         if (userRepository.findByEmail(dto.getEmail()).isPresent()) {
             throw new IllegalStateException("Email is already registered!");
         }

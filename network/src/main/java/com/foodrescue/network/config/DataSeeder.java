@@ -5,6 +5,7 @@ import com.foodrescue.network.repository.*;
 import lombok.RequiredArgsConstructor;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.context.annotation.Profile;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Component;
 
 import java.math.BigDecimal;
@@ -18,16 +19,26 @@ public class DataSeeder implements CommandLineRunner {
     private final UserRepository userRepository;
     private final FoodItemRepository foodItemRepository;
     private final PickupClaimRepository claimRepository;
+    private final PasswordEncoder passwordEncoder; // Added for security
 
     @Override
     public void run(String... args) {
         if (userRepository.count() > 0)
             return;
 
-        // 1. Create a Vendor
+        // 1. Create a Master Admin
+        userRepository.save(User.builder()
+                .name("System Admin")
+                .email("admin@foodrescue.net")
+                .password(passwordEncoder.encode("admin123"))
+                .role(UserRole.ROLE_ADMIN)
+                .build());
+
+        // 2. Create a Vendor
         User bakery = userRepository.save(User.builder()
                 .name("Artisan Crust Bakery")
                 .email("contact@artisancrust.com")
+                .password(passwordEncoder.encode("vendor123"))
                 .role(UserRole.ROLE_VENDOR)
                 .address("124 Market Street, Downtown")
                 .phone("+1-555-0199")
@@ -35,10 +46,11 @@ public class DataSeeder implements CommandLineRunner {
                 .longitude(-122.4194)
                 .build());
 
-        // 2. Create a Shelter Coordinator
+        // 3. Create a Shelter Coordinator
         User shelter = userRepository.save(User.builder()
                 .name("Hope Community Kitchen")
                 .email("coordinator@hopekitchen.org")
+                .password(passwordEncoder.encode("shelter123"))
                 .role(UserRole.ROLE_SHELTER)
                 .address("500 4th Street, Downtown")
                 .phone("+1-555-0244")
@@ -46,7 +58,7 @@ public class DataSeeder implements CommandLineRunner {
                 .longitude(-122.4010)
                 .build());
 
-        // 3. Normal sale item (>24 hours shelf life)
+        // 4. Normal sale item (>24 hours shelf life)
         foodItemRepository.save(FoodItem.builder()
                 .name("Baguettes & Brioche Loaves")
                 .category(FoodCategory.BAKERY)
@@ -58,7 +70,7 @@ public class DataSeeder implements CommandLineRunner {
                 .vendor(bakery)
                 .build());
 
-        // 4. Critical donation item (expires in 3 hours - triggers WebSocket alert)
+        // 5. Critical donation item (expires in 3 hours - triggers WebSocket alert)
         foodItemRepository.save(FoodItem.builder()
                 .name("Prepared Chicken & Rice Bowls")
                 .category(FoodCategory.PREPARED_MEALS)
@@ -70,7 +82,7 @@ public class DataSeeder implements CommandLineRunner {
                 .vendor(bakery)
                 .build());
 
-        // 5. Already completed pickup claim (ready to test carbon and salvage metrics!)
+        // 6. Already completed pickup claim
         FoodItem completedItem = foodItemRepository.save(FoodItem.builder()
                 .name("Surplus Whole Grain Bread")
                 .category(FoodCategory.BAKERY)
@@ -84,13 +96,17 @@ public class DataSeeder implements CommandLineRunner {
 
         claimRepository.save(PickupClaim.builder()
                 .foodItem(completedItem)
-                .shelter(shelter) // 'shelter' is now cleanly used!
+                .shelter(shelter)
                 .status(ClaimStatus.COMPLETED)
                 .claimTime(LocalDateTime.now().minusHours(3))
                 .completedTime(LocalDateTime.now().minusHours(1))
                 .notes("Picked up on time by volunteer driver.")
                 .build());
 
-        System.out.println(">>> Sample seed data created successfully (Vendors, Shelters, Food Items, Claims)!");
+        System.out.println("=========================================");
+        System.out.println(">>> Sample seed data + MASTER ADMIN created!");
+        System.out.println(">>> Admin Email: admin@foodrescue.net");
+        System.out.println(">>> Admin Pass: admin123");
+        System.out.println("=========================================");
     }
 }
