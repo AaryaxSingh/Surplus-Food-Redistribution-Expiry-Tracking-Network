@@ -7,6 +7,7 @@ import com.foodrescue.network.dto.UserRegistrationDTO;
 import com.foodrescue.network.model.User;
 import com.foodrescue.network.model.UserRole;
 import com.foodrescue.network.repository.UserRepository;
+import org.springframework.security.crypto.password.PasswordEncoder;
 
 import lombok.RequiredArgsConstructor;
 
@@ -15,6 +16,7 @@ import lombok.RequiredArgsConstructor;
 public class UserService {
 
     private final UserRepository userRepository;
+    private final PasswordEncoder passwordEncoder;
 
     public User registerUser(UserRegistrationDTO dto) {
         if (userRepository.findByEmail(dto.getEmail()).isPresent()) {
@@ -24,6 +26,7 @@ public class UserService {
         User newUser = User.builder()
                 .name(dto.getName())
                 .email(dto.getEmail())
+                .password(passwordEncoder.encode(dto.getPassword()))
                 .role(dto.getRole())
                 .address(dto.getAddress())
                 .phone(dto.getPhone())
@@ -34,9 +37,13 @@ public class UserService {
         return userRepository.save(newUser);
     }
 
-    public User login(String email) {
-        return userRepository.findByEmail(email)
+    public User login(String email, String rawPassword) {
+        User user = userRepository.findByEmail(email)
                 .orElseThrow(() -> new IllegalArgumentException("User not found with email: " + email));
+        if (!passwordEncoder.matches(rawPassword, user.getPassword())) {
+            throw new IllegalArgumentException("Invalid email or password");
+        }
+        return user;
     }
 
     public List<User> getUsersByRole(UserRole role) {

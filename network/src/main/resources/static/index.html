@@ -122,7 +122,11 @@ const demoDB = {
 async function api(path, opt = {}) {
   if (!DEMO) {
     try {
-      const r = await fetch(CFG.API + path, { headers:{'Content-Type':'application/json'}, ...opt });
+      const token = localStorage.getItem('frn_token');
+      const headers = { 'Content-Type': 'application/json' };
+      if (token) headers['Authorization'] = 'Bearer ' + token;
+      
+      const r = await fetch(CFG.API + path, { headers, ...opt });
       const body = await r.json().catch(() => ({}));
       if (!r.ok) { const e = new Error(body.message || r.statusText); e.status = r.status; throw e; }
       return body;
@@ -132,8 +136,8 @@ async function api(path, opt = {}) {
 }
 function demo(path, opt) {
   const m = opt.method || 'GET', P = CFG.PATHS;
-  if (path === P.register) return { id:99, ...JSON.parse(opt.body) };
-  if (path === P.login) { const e = JSON.parse(opt.body).email; const u = demoDB.users.find(x=>x.email===e); if(u) return {id:99,...u}; throw new Error('User not found'); }
+  if (path === P.register) return { user: { id:99, ...JSON.parse(opt.body) }, token: 'demo-jwt-token' };
+  if (path === P.login) { const e = JSON.parse(opt.body).email; const u = demoDB.users.find(x=>x.email===e); if(u) return { user: {id:99,...u}, token: 'demo-jwt-token' }; throw new Error('User not found'); }
   if (path === P.donations) return demoDB.foods.filter(f => f.status === 'DONATION_CRITICAL');
   if (path === P.foods && m === 'GET') return demoDB.foods;
   if (path === P.foods) { const b = JSON.parse(opt.body); const f = { id:Date.now(), status:'AVAILABLE', ...b }; demoDB.foods.push(f); return f; }
@@ -177,7 +181,7 @@ function renderNav() {
     (u ? menu + link('impact', 'Impact') + `<a class="l" href="#" onclick="logout();return false">Sign out (${esc(u.name)})</a>` 
        : `<a class="btn o" href="#auth" style="text-decoration:none;font-size:0.9rem;padding:8px 16px;border-radius:99px">Login / Register</a>`);
 }
-function logout() { localStorage.removeItem('frn_user'); state.user = null; state.stomp?.disconnect?.(); location.hash = 'home'; route(); }
+function logout() { localStorage.removeItem('frn_user'); localStorage.removeItem('frn_token'); state.user = null; state.stomp?.disconnect?.(); location.hash = 'home'; route(); }
 async function route() {
   clearInterval(state.timer); if (state.stomp && (location.hash !== '#shelter')) { try { state.stomp.disconnect(); } catch {} state.stomp = null; }
   const r = location.hash.slice(1) || 'home';
@@ -229,6 +233,7 @@ function viewAuth() {
       <h2 style="margin-bottom:8px">Welcome Back</h2>
       <p class="mu" style="margin-bottom:24px">Login to your account.</p>
       <label for="le">Email Address</label><input id="le" type="email" required autocomplete="email">
+      <label for="lp">Password</label><input id="lp" type="password" required autocomplete="current-password">
       <p style="margin-top:24px"><button class="btn" style="width:100%;font-size:1.05rem">Login</button></p>
     </form>
 
@@ -237,6 +242,7 @@ function viewAuth() {
       <p class="mu" style="margin-bottom:24px">Join the food rescue network.</p>
       <label for="rn">Organisation Name</label><input id="rn" required autocomplete="organization">
       <label for="re">Email Address</label><input id="re" type="email" required autocomplete="email">
+      <label for="rp">Password</label><input id="rp" type="password" minlength="6" required autocomplete="new-password">
       <label>I am a...</label>
       <div class="roles">
         <span><input type="radio" name="role" id="rv" value="ROLE_VENDOR" checked><label for="rv">Vendor</label></span>
@@ -250,9 +256,11 @@ function viewAuth() {
   $('#loginForm').onsubmit = async e => {
     e.preventDefault();
     try {
-      const res = await api(CFG.PATHS.login, { method:'POST', body:JSON.stringify({ email:$('#le').value }) });
-      state.user = { id:res.id, name:res.name, role: res.role.replace('ROLE_', '') };
+      const body = { email:$('#le').value, password:$('#lp').value };
+      const res = await api(CFG.PATHS.login, { method:'POST', body:JSON.stringify(body) });
+      state.user = { id:res.user.id, name:res.user.name, role: res.user.role.replace('ROLE_', '') };
       localStorage.setItem('frn_user', JSON.stringify(state.user));
+      localStorage.setItem('frn_token', res.token);
       toast('Welcome back', 'Logged in successfully.', 'ok');
       location.hash = state.user.role === 'VENDOR' ? 'vendor' : state.user.role === 'ADMIN' ? 'admin' : 'shelter';
     } catch (err) { toast('Login failed', err.message, 'err'); }
@@ -261,11 +269,12 @@ function viewAuth() {
   $('#regForm').onsubmit = async e => {
     e.preventDefault();
     const role = document.querySelector('[name=role]:checked').value;
-    const body = { name:$('#rn').value, email:$('#re').value, role };
+    const body = { name:$('#rn').value, email:$('#re').value, password:$('#rp').value, role };
     try {
       const res = await api(CFG.PATHS.register, { method:'POST', body:JSON.stringify(body) });
-      state.user = { id:res.id, name:body.name, role: role.replace('ROLE_', '') };
+      state.user = { id:res.user.id, name:res.user.name, role: res.user.role.replace('ROLE_', '') };
       localStorage.setItem('frn_user', JSON.stringify(state.user));
+      localStorage.setItem('frn_token', res.token);
       toast('Welcome aboard', 'Your account is ready.', 'ok');
       location.hash = state.user.role === 'VENDOR' ? 'vendor' : state.user.role === 'ADMIN' ? 'admin' : 'shelter';
     } catch (err) { toast('Could not register', err.message, 'err'); }
